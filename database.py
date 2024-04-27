@@ -1,0 +1,47 @@
+from neo4j import GraphDatabase
+import os
+from dotenv import load_dotenv
+import pymysql
+import sys
+
+load_dotenv()
+# Neo4j connection settings
+DATABASE_NEO4J_URI = os.getenv('DATABASE_NEO4J_URI')
+DATABASE_NEO4J_USER = os.getenv('DATABASE_NEO4J_USER')
+DATABASE_NEO4J_PASSWORD = os.getenv('DATABASE_NEO4J_PASSWORD')
+DATABASE_NEO4J_AUTH = (DATABASE_NEO4J_USER, DATABASE_NEO4J_PASSWORD)
+
+# MySQL connection settings
+DATABASE_MYSQL_HOST = os.getenv('DATABASE_MYSQL_HOST')
+DATABASE_MYSQL_USER = os.getenv('DATABASE_MYSQL_USER')
+DATABASE_MYSQL_PASSWORD = os.getenv('DATABASE_MYSQL_PASSWORD')
+DATABASE_MYSQL_DB = os.getenv('DATABASE_MYSQL_DB')
+
+def connect_mysql():
+    conn = pymysql.connect(host=DATABASE_MYSQL_HOST,
+                                 user=DATABASE_MYSQL_USER,
+                                 password=DATABASE_MYSQL_PASSWORD,
+                                 database=DATABASE_MYSQL_DB,
+                                 cursorclass=pymysql.cursors.DictCursor)
+    try:
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT VERSION()")
+                version = cursor.fetchone()
+                print(f"Connected to MySQL Server version {version['VERSION()']}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        print("Cannot connect to MySQL Server")
+        sys.exit(1)
+
+def connect_neo4j():
+    try:
+        with GraphDatabase.driver(DATABASE_NEO4J_URI, auth=DATABASE_NEO4J_AUTH) as driver:
+            driver.verify_connectivity()
+            print("Connected to Neo4j Server")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        print("Cannot connect to Neo4j Server")
+        sys.exit(2)
+
+
