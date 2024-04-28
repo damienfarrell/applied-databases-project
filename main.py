@@ -36,37 +36,51 @@ def menu() -> str:
     else:
         return answers['choice']
 
-
-
 def view_city_by_country():
     questions = [inquirer.Text('country', message="Enter the country to view its cities")]
     answers = inquirer.prompt(questions)
     if not answers:
         print("No country entered, exiting...")
         return
-
     country = answers['country']
-    conn = connect_mysql()
-
-    if not conn:
-        print("Failed to connect to the database.")
+    if not country:
+        print("No country entered, exiting...")
         return
-
+    page_size = 2
+    current_offset = 0
+    conn = connect_mysql()
     try:
-        with conn.cursor() as cursor:
-            query = "SELECT * FROM country WHERE name = %s"
-            cursor.execute(query, (country,))
-            cities = cursor.fetchall()
+        while True:
+            with conn.cursor() as cursor:
+                query = """
+                    SELECT country.name AS country, city.name AS city, city.district, city.population
+                    FROM city
+                    LEFT JOIN country ON country.code = city.countrycode
+                    WHERE country.name LIKE CONCAT('%%', %s, '%%')
+                    ORDER BY country.name
+                    LIMIT %s OFFSET %s;
+                """
+                cursor.execute(query, (country, page_size, current_offset))
+                result = cursor.fetchall()
 
-            print(cities)
+                if not result:
+                    print("No more cities to display.")
+                    print("\n")
+                    break
 
+                headers = ["Country", "City", "District", "Population"]
+                table = tabulate(result, headers="keys", tablefmt="fancy_grid")
+                print(table)
+
+                current_offset += page_size
+                user_input = input("\n-- Quit (q) --\n")
+                if user_input.lower() == 'q':
+                    print("\n")
+                    break
     except pymysql.MySQLError as e:
         print(f"An error occurred while trying to query the database: {e}")
-
     finally:
         conn.close()
-
-
 
 def update_city_population():
     print("Updating City Population")
@@ -87,10 +101,6 @@ def twin_with_dublin():
     print("Twinning with Dublin")
 
 def main():
-    # install_packages(required_packages)
-    # connect_mysql()
-    # connect_neo4j()
-
     choice_to_function = {
         '1': view_city_by_country,
         '2': update_city_population,
@@ -101,12 +111,21 @@ def main():
         '7': twin_with_dublin,
         'x': lambda: print("Exiting the application...")
     }
+    while True:
+        time.sleep(2)
+        choice = menu()
+        if choice == 'x':
+            break
+        if choice in choice_to_function:
+            choice_to_function[choice]()
+        if choice is None:
+            print("No option selected, exiting the application...")
+            break
 
-    choice = menu()
-    if choice in choice_to_function:
-        choice_to_function[choice]()
-    elif choice is None:
-        print("No option selected, exiting the application...")
+
+    # install_packages(required_packages)
+    # connect_neo4j()
 
 if __name__ == "__main__":
     main()
+

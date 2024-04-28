@@ -32,10 +32,12 @@ def connect_mysql():
             version = cursor.fetchone()
             # print(f"Connected to MySQL Server version {version['VERSION()']}")
         return conn
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        print("Cannot connect to MySQL Server")
+    except pymysql.MySQLError as e:
+        print(f"Connection failed: {e}")
         return None
+
+
+
 
 
 def connect_neo4j():
