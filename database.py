@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import pymysql
 import sys
+from pymysql.cursors import DictCursor
 
 load_dotenv()
 # Neo4j connection settings
@@ -18,21 +19,24 @@ DATABASE_MYSQL_PASSWORD = os.getenv('DATABASE_MYSQL_PASSWORD')
 DATABASE_MYSQL_DB = os.getenv('DATABASE_MYSQL_DB')
 
 def connect_mysql():
-    conn = pymysql.connect(host=DATABASE_MYSQL_HOST,
-                                 user=DATABASE_MYSQL_USER,
-                                 password=DATABASE_MYSQL_PASSWORD,
-                                 database=DATABASE_MYSQL_DB,
-                                 cursorclass=pymysql.cursors.DictCursor)
     try:
-        with conn:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT VERSION()")
-                version = cursor.fetchone()
-                print(f"Connected to MySQL Server version {version['VERSION()']}")
+        conn = pymysql.connect(
+            host=DATABASE_MYSQL_HOST,
+            user=DATABASE_MYSQL_USER,
+            password=DATABASE_MYSQL_PASSWORD,
+            database=DATABASE_MYSQL_DB,
+            cursorclass=DictCursor
+        )
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT VERSION()")
+            version = cursor.fetchone()
+            # print(f"Connected to MySQL Server version {version['VERSION()']}")
+        return conn
     except Exception as e:
         print(f"An error occurred: {e}")
         print("Cannot connect to MySQL Server")
-        sys.exit(1)
+        return None
+
 
 def connect_neo4j():
     try:
@@ -43,5 +47,3 @@ def connect_neo4j():
         print(f"An error occurred: {e}")
         print("Cannot connect to Neo4j Server")
         sys.exit(2)
-
-

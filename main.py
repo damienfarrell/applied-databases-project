@@ -1,17 +1,15 @@
 from setup import install_packages, required_packages
 from database import connect_mysql, connect_neo4j
 from rich import print
-import typer
+import inquirer
 from typing import List
 from pyfiglet import Figlet
-import inquirer
 from tabulate import tabulate
 from yaspin import yaspin
 import time
+import pymysql
 
-app = typer.Typer()
-
-def display_menu() -> str:
+def menu() -> str:
     f = Figlet(font='slant')
     print(f.renderText('Main Menu'))
 
@@ -33,60 +31,82 @@ def display_menu() -> str:
                       ),
     ]
     answers = inquirer.prompt(questions)
-    return answers['choice']
+    if answers is None:
+        return None
+    else:
+        return answers['choice']
 
-@yaspin(text="Retrieving Cities by Country...")
-@app.command()
-def view_cities_by_country():
-    time.sleep(5)
-    print("ASDF")
 
-@app.command()
+
+def view_city_by_country():
+    questions = [inquirer.Text('country', message="Enter the country to view its cities")]
+    answers = inquirer.prompt(questions)
+    if not answers:
+        print("No country entered, exiting...")
+        return
+
+    country = answers['country']
+    conn = connect_mysql()
+
+    if not conn:
+        print("Failed to connect to the database.")
+        return
+
+    try:
+        with conn.cursor() as cursor:
+            query = "SELECT * FROM country WHERE name = %s"
+            cursor.execute(query, (country,))
+            cities = cursor.fetchall()
+
+            print(cities)
+
+    except pymysql.MySQLError as e:
+        print(f"An error occurred while trying to query the database: {e}")
+
+    finally:
+        conn.close()
+
+
+
 def update_city_population():
     print("Updating City Population")
 
-@app.command()
 def add_new_person():
     print("Adding New Person")
 
-@app.command()
 def delete_person():
     print("Deleting Person")
 
-@app.command()
 def view_countries_by_population():
     print("Viewing Countries by Population")
 
-@app.command()
 def show_twinned_cities():
     print("Showing Twinned Cities")
 
-@app.command()
 def twin_with_dublin():
     print("Twinning with Dublin")
 
-if __name__ == "__main__":
-
+def main():
     # install_packages(required_packages)
-
-    connect_mysql()
-    connect_neo4j()
-    print("Running main application")
-
+    # connect_mysql()
+    # connect_neo4j()
 
     choice_to_function = {
-        '1': view_cities_by_country,
+        '1': view_city_by_country,
         '2': update_city_population,
         '3': add_new_person,
         '4': delete_person,
         '5': view_countries_by_population,
         '6': show_twinned_cities,
         '7': twin_with_dublin,
+        'x': lambda: print("Exiting the application...")
     }
 
-    choice = display_menu()
-    if choice == 'x':
-        typer.echo("Exiting the application...")
-        raise typer.Exit()
-    else:
+    choice = menu()
+    if choice in choice_to_function:
         choice_to_function[choice]()
+    elif choice is None:
+        print("No option selected, exiting the application...")
+
+if __name__ == "__main__":
+    main()
