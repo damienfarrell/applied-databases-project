@@ -37,15 +37,12 @@ def menu() -> str:
         return answers['choice']
 
 def view_city_by_country():
-    questions = [inquirer.Text('country', message="Enter the country to view its cities")]
+    questions = [inquirer.Text('country', message="Enter Country")]
     answers = inquirer.prompt(questions)
     if not answers:
         print("No country entered, exiting...")
         return
     country = answers['country']
-    if not country:
-        print("No country entered, exiting...")
-        return
     page_size = 2
     current_offset = 0
     conn = connect_mysql()
@@ -68,7 +65,6 @@ def view_city_by_country():
                     print("\n")
                     break
 
-                headers = ["Country", "City", "District", "Population"]
                 table = tabulate(result, headers="keys", tablefmt="fancy_grid")
                 print(table)
 
@@ -76,20 +72,219 @@ def view_city_by_country():
                 user_input = input("\n-- Quit (q) --\n")
                 if user_input.lower() == 'q':
                     print("\n")
+                    time.sleep(1)
                     break
+                
+
     except pymysql.MySQLError as e:
         print(f"An error occurred while trying to query the database: {e}")
     finally:
         conn.close()
 
 def update_city_population():
-    print("Updating City Population")
+    conn = connect_mysql()
+    try:
+        while True:
+            questions = [inquirer.Text('city', message="Enter City ID")]
+            answers = inquirer.prompt(questions)
+            if not answers:
+                print("No city entered, exiting...")
+                break
+            city_id = answers['city']
+
+            with conn.cursor() as cursor:
+                    read_query = """
+                        SELECT id, name, countrycode, population, district, latitude, longitude
+                        FROM city
+                        WHERE id = %s
+                    """
+                    cursor.execute(read_query, (city_id,))
+                    result = cursor.fetchone()
+                    if not result:
+                        print(f"No city found with ID = {city_id}.")
+                        continue
+                    pop_option_question = [
+                        inquirer.List('choice',
+                                    message="Increase or Decrease Population",
+                                    choices=[('Increase', 'increase'), ('Decrease', 'decrease')]
+                                    )
+                    ]
+                    pop_option_answer = inquirer.prompt(pop_option_question)
+                    choice = pop_option_answer['choice']
+                    amount_question = [inquirer.Text('amount', message="Enter population adjustment amount")]
+                    amount_answer = inquirer.prompt(amount_question)
+                    
+                    adjustment = int(amount_answer['amount'])
+                    if choice == 'increase':
+                        new_population = result['population'] + adjustment
+                    elif choice == 'decrease':
+                        new_population = result['population'] - adjustment
+                        if new_population < 0:
+                            print("Population decrease would result in a negative value, which is not allowed.")
+                            break
+                    update_query = """
+                        UPDATE city
+                        SET population = %s
+                        WHERE id = %s
+                    """
+                    cursor.execute(update_query, (new_population, city_id))
+                    conn.commit()
+                    cursor.execute(read_query, (city_id,))
+                    updated_result = cursor.fetchone()
+                    table = tabulate([updated_result], headers="keys", tablefmt="fancy_grid")
+                    print("\n")
+                    print(table)
+                    print("\n")
+                    print(f"{result['name']} has changed its population from {result['population']} to {updated_result['population']}")
+                    print("\n")
+                    time.sleep(2)
+                    break
+    except pymysql.MySQLError as e:
+        print(f"An error occurred while trying to query the database: {e}")
+    finally:
+        conn.close()
+
 
 def add_new_person():
-    print("Adding New Person")
+    conn = connect_mysql()
+    try:
+        questions = [
+            inquirer.Text('id', message="ID"),
+            inquirer.Text('name', message="Name"),
+            inquirer.Text('age', message="Age"),
+            inquirer.Text('salary', message="Salary"),
+            inquirer.Text('city_id', message="City ID")
+        ]
+        answers = inquirer.prompt(questions)
+        if not answers:
+            print("No data entered, exiting...")
+            return  
+
+        id = answers['id']
+        name = answers['name']
+        age = answers['age']
+        salary = answers['salary']
+        city_id = answers['city_id']
+
+        with conn.cursor() as cursor:
+            check_id_query = "SELECT personid FROM person WHERE personid = %s"
+            cursor.execute(check_id_query, (id,))
+            if cursor.fetchone():
+                print(f"Error: Person ID: {id} already exists")
+                return  
+
+            
+            check_city_query = "SELECT cityid FROM city WHERE cityid = %s"
+            cursor.execute(check_city_query, (city_id,))
+            if not cursor.fetchone():
+                print(f"Error: City ID: {city_id} does not exist")
+                return  #
+
+            try:
+                insert_query = """
+                    INSERT INTO person (personid, personname, age, salary, city)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                cursor.execute(insert_query, (id, name, age, salary, city_id))
+                conn.commit()
+                print("New person added successfully.")
+            except pymysql.MySQLError as e:
+                print(f"An error occurred: {e}")
+                conn.rollback()
+                return 
+
+    except pymysql.MySQLError as e:
+        print(f"An error occurred while trying to query the database: {e}")
+    finally:
+        conn.close()
+
+
+# TODO COMPLETE FROM THIS FORWARDS!!!!
 
 def delete_person():
-    print("Deleting Person")
+    conn = connect_mysql()
+    try:
+        questions = [
+            inquirer.Text('id', message="ID"),
+            inquirer.Text('name', message="Name"),
+            inquirer.Text('age', message="Age"),
+            inquirer.Text('salary', message="Salary"),
+            inquirer.Text('city_id', message="City ID")
+        ]
+        answers = inquirer.prompt(questions)
+        if not answers:
+            print("No data entered, exiting...")
+            return  
+
+        id = answers['id']
+        name = answers['name']
+        age = answers['age']
+        salary = answers['salary']
+        city_id = answers['city_id']
+
+        with conn.cursor() as cursor:
+            check_id_query = "SELECT personid FROM person WHERE personid = %s"
+            cursor.execute(check_id_query, (id,))
+            if cursor.fetchone():
+                print(f"Error: Person ID: {id} already exists")
+                return  
+
+            
+            check_city_query = "SELECT cityid FROM city WHERE cityid = %s"
+            cursor.execute(check_city_query, (city_id,))
+            if not cursor.fetchone():
+                print(f"Error: City ID: {city_id} does not exist")
+                return  #
+
+            try:
+                insert_query = """
+                    INSERT INTO person (personid, personname, age, salary, city)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                cursor.execute(insert_query, (id, name, age, salary, city_id))
+                conn.commit()
+                print("New person added successfully.")
+            except pymysql.MySQLError as e:
+                print(f"An error occurred: {e}")
+                conn.rollback()
+                return 
+
+    except pymysql.MySQLError as e:
+        print(f"An error occurred while trying to query the database: {e}")
+    finally:
+        conn.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def view_countries_by_population():
     print("Viewing Countries by Population")
