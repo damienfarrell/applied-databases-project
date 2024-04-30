@@ -178,7 +178,7 @@ def add_new_person():
             cursor.execute(check_city_query, (city_id,))
             if not cursor.fetchone():
                 print(f"Error: City ID: {city_id} does not exist")
-                return  #
+                return
 
             try:
                 insert_query = """
@@ -197,97 +197,79 @@ def add_new_person():
         print(f"An error occurred while trying to query the database: {e}")
     finally:
         conn.close()
-
-
-# TODO COMPLETE FROM THIS FORWARDS!!!!
 
 def delete_person():
     conn = connect_mysql()
     try:
         questions = [
-            inquirer.Text('id', message="ID"),
-            inquirer.Text('name', message="Name"),
-            inquirer.Text('age', message="Age"),
-            inquirer.Text('salary', message="Salary"),
-            inquirer.Text('city_id', message="City ID")
+            inquirer.Text('person_id', message="Enter ID of Person to Delete"),
         ]
         answers = inquirer.prompt(questions)
         if not answers:
             print("No data entered, exiting...")
             return  
-
-        id = answers['id']
-        name = answers['name']
-        age = answers['age']
-        salary = answers['salary']
-        city_id = answers['city_id']
-
+        person_id = answers['person_id']
         with conn.cursor() as cursor:
-            check_id_query = "SELECT personid FROM person WHERE personid = %s"
-            cursor.execute(check_id_query, (id,))
-            if cursor.fetchone():
-                print(f"Error: Person ID: {id} already exists")
-                return  
-
-            
-            check_city_query = "SELECT cityid FROM city WHERE cityid = %s"
-            cursor.execute(check_city_query, (city_id,))
-            if not cursor.fetchone():
-                print(f"Error: City ID: {city_id} does not exist")
-                return  #
-
+            # Check if the person has visited any cities
+            hvc_query = """
+                        SELECT person.*, hvc.cityid
+                        FROM person
+                        INNER JOIN hasvisitedcity hvc ON person.personID = hvc.personID
+                        WHERE person.personID = %s
+                        """
+            cursor.execute(hvc_query, (person_id,))
+            if cursor.fetchone() is not None:
+                print("\n")
+                print(f"Can't delete Person ID: {person_id}. He/she has visited cities.")
+                print("\n")
+                time.sleep(1)
+                return
             try:
-                insert_query = """
-                    INSERT INTO person (personid, personname, age, salary, city)
-                    VALUES (%s, %s, %s, %s, %s)
-                """
-                cursor.execute(insert_query, (id, name, age, salary, city_id))
+                delete_query = "DELETE FROM person WHERE personID = %s"
+                cursor.execute(delete_query, (person_id,))
                 conn.commit()
-                print("New person added successfully.")
+                print(f"Person ID: {person_id} deleted")
             except pymysql.MySQLError as e:
                 print(f"An error occurred: {e}")
                 conn.rollback()
-                return 
-
     except pymysql.MySQLError as e:
         print(f"An error occurred while trying to query the database: {e}")
     finally:
         conn.close()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def view_countries_by_population():
     print("Viewing Countries by Population")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def show_twinned_cities():
     print("Showing Twinned Cities")
