@@ -36,16 +36,10 @@ def connect_mysql():
         print(f"Connection failed: {e}")
         return None
 
-
-
-
-
 def connect_neo4j():
     try:
-        with GraphDatabase.driver(DATABASE_NEO4J_URI, auth=DATABASE_NEO4J_AUTH) as driver:
-            driver.verify_connectivity()
-            print("Connected to Neo4j Server")
+        driver = GraphDatabase.driver(DATABASE_NEO4J_URI, auth=DATABASE_NEO4J_AUTH)
+        return driver
     except Exception as e:
-        print(f"An error occurred: {e}")
-        print("Cannot connect to Neo4j Server")
-        sys.exit(2)
+        print(f"Failed to create a driver: {e}")
+        return None

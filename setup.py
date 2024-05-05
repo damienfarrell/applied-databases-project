@@ -44,7 +44,6 @@ required_packages = [
     'six==1.16.0',
     'tabulate==0.9.0',
     'termcolor==2.3.0',
-    'typer==0.12.3',
     'typing_extensions==4.11.0',
     'wcwidth==0.2.13',
     'xmod==1.8.1',

@@ -8,6 +8,8 @@ from tabulate import tabulate
 from yaspin import yaspin
 import time
 import pymysql
+from neo4j import GraphDatabase, RoutingControl
+from neo4j.exceptions import DriverError, Neo4jError
 
 def menu() -> str:
     f = Figlet(font='slant')
@@ -238,44 +240,117 @@ def delete_person():
         conn.close()
 
 def view_countries_by_population():
-    print("Viewing Countries by Population")
+    questions = [
+        inquirer.List('option', message="Choose comparison (<, >, =)", choices=['<', '>', '=']),
+        inquirer.Text('population', message="Enter population", validate=lambda _, x: x.isdigit())
+    ]
+    answers = inquirer.prompt(questions)
+    
+    if not answers:
+        print("No input provided, exiting...")
+        return
+    
+    option = answers['option']
+    population = int(answers['population'])
+    
+    conn = connect_mysql()
+    if conn is None:
+        print("Failed to connect to the database.")
+        return
 
+    try:
+        with conn.cursor() as cursor:
+            query = f"""
+                SELECT code, name, continent, population
+                FROM country
+                WHERE population {option} %s
+                ORDER BY population
+            """
+            cursor.execute(query, (population,))
+            result = cursor.fetchall()
 
+            if not result:
+                print("No countries to display.")
+                return
 
+            table = tabulate(result, headers="keys", tablefmt="fancy_grid")
+            
+            time.sleep(2)
+            print("\n")
+            print(table)
+            print("\n")
+            time.sleep(2)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    except pymysql.MySQLError as e:
+        print(f"An error occurred while trying to query the database: {e}")
+    finally:
+        conn.close()
 
 def show_twinned_cities():
-    print("Showing Twinned Cities")
+    driver = connect_neo4j()
+    conn = connect_mysql()
+    try:
+        with driver.session() as session:
+            result = session.run("MATCH (city)-[:TWINNED_WITH]-(partner_city) RETURN city.name AS City, partner_city.name AS PartnerCity ORDER BY city.name")
+            for record in result:
+                print(f"{record['City']} <-> {record['PartnerCity']}")
+            time.sleep(2)
+    except Exception as e:
+        print(f"An error occurred while fetching twinned cities: {e}")
 
 def twin_with_dublin():
-    print("Twinning with Dublin")
+    driver = connect_neo4j()
+    conn = connect_mysql()
+    
+    while True:
+        try:
+            with driver.session() as session:
+                dublin_exists = session.run("MATCH (city:City {name: 'Dublin'}) RETURN city").single()
+                if not dublin_exists:
+                    print("Error: Dublin does not exist in Neo4j database")
+                    break
+        except Exception as e:
+            print(f"An error occurred while checking for Dublin: {e}")
+            break
+
+        questions = [
+            inquirer.Text('cid', message="Enter ID of City to twin with Dublin", validate=lambda _, x: x.isdigit())
+        ]
+        answers = inquirer.prompt(questions)
+        if not answers:
+            print("No input provided.")
+            break
+        partner_cid = int(answers['cid'])
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT name FROM city WHERE id = %s", (partner_cid,))
+                result = cursor.fetchone()
+                if result:
+                    city_name = result['name']
+                    with driver.session() as session:
+                        city_check = session.run(
+                            "MATCH (city:City) WHERE city.cid = $cid RETURN exists((city)-[:TWINNED_WITH]->(:City {name: 'Dublin'})) AS isTwinned",
+                            parameters={'cid': partner_cid}).single()
+                        if city_check and city_check['isTwinned']:
+                            print(f"{city_name} is already twinned with Dublin.")
+                        else:
+                            session.run("MATCH (dublin:City {name: 'Dublin'}), (city:City {cid: $cid}) MERGE (city)-[:TWINNED_WITH]->(dublin)",
+                                        parameters={'cid': partner_cid})
+                            print(f"{city_name} is now twinned with Dublin.")
+                            break
+                else:
+                    print(f"{partner_cid} does not exist in MySQL database")
+                    continue
+        except Exception as e:
+            print(f"An error occurred: {e}")
+        finally:
+            if not conn.open:
+                conn = connect_mysql()
+            if not driver.session():
+                driver = connect_neo4j()
+
+    conn.close()
+    driver.close()
 
 def main():
     choice_to_function = {
@@ -298,7 +373,6 @@ def main():
         if choice is None:
             print("No option selected, exiting the application...")
             break
-
 
     # install_packages(required_packages)
     # connect_neo4j()
