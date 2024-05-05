@@ -6,7 +6,7 @@
 
 # **Application Overview**
 
-This Python application provides a menu-driven interface CLI for managing city and population data, along with person management, using MySQL and Neo4j databases.
+This Python application provides a menu-driven interface CLI, using MySQL and Neo4j databases.
 
 ## **Features**
 
@@ -24,7 +24,7 @@ The application requires several Python packages to function, which can be insta
 
 ## **Main Menu**
 
-Upon execution, the main menu is presented where users can choose an action by entering the corresponding number. The application provides feedback and prompts through a CLI interface powered by libraries such as `inquirer` for interactive prompts and `yaspin` for spinners during operations, enhancing user experience.
+Upon execution, the main menu is presented where users can choose an action by selection a menu option with the up and down arrows. The application provides feedback and prompts through a CLI interface powered by libraries such as `inquirer` for interactive prompts and `yaspin` for spinners during operations, enhancing user experience.
 
 ## **Database Connection**
 
